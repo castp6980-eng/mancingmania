@@ -62,6 +62,7 @@ body.tow .cb{height:11vh}
 #towt{position:fixed;left:0;right:0;bottom:3vh;text-align:center;font-weight:700;letter-spacing:.15em;font-size:13px;color:var(--gold);opacity:0;transition:opacity .6s;pointer-events:none}
 body.tow #towt{opacity:1}
 #wx{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:46px;height:46px;padding:0;border-radius:50%;font-size:22px;color:#fff;cursor:pointer;pointer-events:auto}
+#mu{position:fixed;left:68px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:46px;height:46px;padding:0;border-radius:50%;font-size:21px;color:#fff;cursor:pointer;pointer-events:auto}
 #flash{position:fixed;inset:0;background:#dfe9ff;opacity:0;pointer-events:none}
 
 .scr{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#05101c;overflow:hidden}
@@ -112,6 +113,7 @@ body.bgon{background:transparent}
   <button id="start" class="btn">🎣 Lempar Kail</button>
 </div>
 <button id="wx" class="glass" title="Ganti cuaca (R)">🌧️</button>
+<button id="mu" class="glass" title="Musik: nyala (klik / tombol M)">🎵</button>
 <div id="quiz" class="ov"><div class="panel glass"><div id="qc">PERTANYAAN</div><div id="qt"></div><img id="qi" alt="" style="display:none;max-width:100%;max-height:30vh;border-radius:12px;margin:0 auto 12px"><div id="qw"><div id="qwb"><i></i></div><span id="qwt"></span></div><div id="qo"></div></div></div>
 <div id="caughtov" class="ov"><div id="card" class="panel glass"><img id="lg" alt="Logo" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);margin:0 auto 8px;display:block"><div id="cx" style="font-weight:700;color:var(--gold);letter-spacing:.1em;margin-bottom:8px"></div><span id="cf"></span><div id="cn"></div><div id="cw"></div><button class="btn" id="again">Mancing Lagi</button></div></div>
 
@@ -527,4 +529,29 @@ api({action:'getSoal',mapel:selM,materi:selT}).then(j=>{const d=j.data.filter(q=
 QS.length=0;d.forEach(q=>QS.push([q.soal,[q.opt_a,q.opt_b,q.opt_c,q.opt_d],'ABCD'.indexOf(q.kunci),q.gambar]));deck=[];begin()})
 .catch(e=>{b.disabled=false;mErr(e.message==='kosong'?'Belum ada soal untuk pilihan ini.':'Gagal mengambil soal.',()=>$('play').onclick())})};
 $('cover').onclick=()=>{$('cover').style.display='none';$('menu').style.display='flex';loadMapel()};
+// ===== BGM saat memancing =====
+const BGM_URL='https://www.dropbox.com/scl/fi/9kuqujgu7388jp7ddonsk/lagu-ai.mp3?rlkey=26yoi0tomi4t1964dpespgijv&st=7r6y5zzq&raw=1';
+const BGM_VOL=.45,FISH=new Set(['cast','wait','bite','f1','f2','rise','sink','tow','quiz']);
+const bgm=new Audio(BGM_URL);bgm.loop=true;bgm.preload='auto';bgm.volume=0;
+let bgmMuted=false,bgmBusy=false,bgmErr=false;
+try{bgmMuted=localStorage.getItem('bgmMuted')==='1'}catch(e){}
+const muBtn=$('mu');
+function muUi(){muBtn.textContent=bgmErr?'⚠️':bgmMuted?'🔇':'🎵';muBtn.title=bgmErr?'Musik gagal dimuat':'Musik: '+(bgmMuted?'mati':'nyala')+' (klik / tombol M)'}
+function bgmPlay(){if(bgmMuted||bgmErr||bgmBusy||!bgm.paused)return;bgmBusy=true;const p=bgm.play();p&&p.then(()=>{bgmBusy=false}).catch(()=>{bgmBusy=false})}
+function muTog(){bgmMuted=!bgmMuted;try{localStorage.setItem('bgmMuted',bgmMuted?'1':'0')}catch(e){}muUi();if(!bgmMuted&&FISH.has(S.ph))bgmPlay()}
+bgm.addEventListener('error',()=>{if(bgmErr)return;bgmErr=true;muUi();console.warn('BGM gagal dimuat:',BGM_URL)});
+muBtn.onclick=()=>{muTog();muBtn.blur()};
+addEventListener('keydown',e=>{if(e.code==='KeyM'&&!e.repeat)muTog()});
+// pancing dimulai (klik = interaksi pengguna, aman untuk autoplay di Safari/iOS)
+$('start').addEventListener('click',bgmPlay);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)bgm.pause()});
+// fade in saat memancing, fade out saat tidak; agak pelan saat kuis
+setInterval(()=>{
+ const want=!bgmMuted&&!bgmErr&&!document.hidden&&FISH.has(S.ph),
+  tgt=want?BGM_VOL*(S.ph==='quiz'?.5:1):0,v=bgm.volume,st=tgt>v?.04:.025;
+ if(want)bgmPlay();
+ bgm.volume=Math.min(1,Math.max(0,Math.abs(tgt-v)<=st?tgt:v+Math.sign(tgt-v)*st));
+ if(!want&&bgm.volume===0&&!bgm.paused)bgm.pause();
+},50);
+muUi();
 </script></body></html>
